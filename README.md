@@ -10,7 +10,7 @@ My best score on the private dataset is 0.44465, a little better than my current
     Owing to lack of the feature description, It is hard to use the tradition method to predict LGD. In 
     my implemention, the operator +,-.*,/  between two features, and the operator (a-b) * c among three 
     features were used, these features were selected by computing the pearson corrlation with the loss.
-## Model descrition:
+## Model description:
     GBM classifier(traindata_1) -> guassian process regression
     GBM calssifier(traindata_2) -> svr, GBM regression
     Finally, the predictions from guassian process regression, svr, GBM regression are blended linearly.
