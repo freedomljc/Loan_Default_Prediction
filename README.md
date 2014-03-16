@@ -8,11 +8,11 @@ My best score on the private dataset is 0.44465, a little better than my current
 
 ## Data preprocessing: 
 
-    The training data is sorted by the time, and the test data is randomly orded. So in the validation process, I
-    first shuffle the training data randomly.
-    Owing to lack of the feature description, It is hard to use the tradition method to predict LGD. In my implemention,
-    the operator +,-.*,/  between two features, and the operator (a-b) * c among three features were used, these features
-    were selected by computing the pearson corrlation with the loss.
+    The training data is sorted by the time, and the test data is randomly orded. So in the validation 
+    process, I first shuffle the training data randomly.
+    Owing to lack of the feature description, It is hard to use the tradition method to predict LGD. In 
+    my implemention, the operator +,-.*,/  between two features, and the operator (a-b) * c among three 
+    features were used, these features were selected by computing the pearson corrlation with the loss.
      
 ## Model descrition:
 
