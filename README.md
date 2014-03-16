@@ -7,7 +7,6 @@ My best score on the private dataset is 0.44465, a little better than my current
 
 
 ## Data preprocessing: 
-
     The training data is sorted by the time, and the test data is randomly orded. So in the validation 
     process, I first shuffle the training data randomly.
     Owing to lack of the feature description, It is hard to use the tradition method to predict LGD. In 
@@ -15,13 +14,16 @@ My best score on the private dataset is 0.44465, a little better than my current
     features were used, these features were selected by computing the pearson corrlation with the loss.
      
 ## Model descrition:
-
     GBM classifier(traindata_1) -> guassian process regression
     GBM calssifier(traindata_2) -> svr, GBM regression
     Finally, the predictions from guassian process regression, svr, GBM regression are blended linearly.
     Otherwise, owing to the long tail distribution of loss, the log(loss) was used.
     
-## Requirements
-    
+## Requirements:
     sklearn package, about 96G ram(gaussian process process spend too much memory).
      
+## Instuction:
+    Download the data from http://www.kaggle.com/c/loan-default-prediction/data to the working directory
+    'loan_default_prediction'.
+    Run the script predict.py
+    
