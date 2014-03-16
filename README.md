@@ -17,7 +17,7 @@ My best score on the private dataset is 0.44465, a little better than my current
     Otherwise, owing to the long tail distribution of loss, the log(loss) was used.
 ## Requirements:
     sklearn package, about 96G ram(gaussian process process spend too much memory).
-## Instuction:
+## Instruction:
     Download the data from http://www.kaggle.com/c/loan-default-prediction/data to the working directory
     'loan_default_prediction'.
     Run the script predict.py
