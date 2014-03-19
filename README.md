@@ -13,7 +13,8 @@ My best score on the private dataset is 0.44465, a little better than my current
 ## Model description:
     GBM classifier(traindata_1) -> guassian process regression
     GBM calssifier(traindata_2) -> svr, GBM regression
-    Finally, the prediction results from guassian process regression, svr, GBM regression are blended linearly.
+    Finally, the prediction results from guassian process regression, svr, GBM regression are blended 
+    linearly.
     Otherwise, owing to the long tail distribution of loss, the log(loss) was used.
 ## Requirements:
     sklearn package, about 96G ram(gaussian process process spend too much memory).
