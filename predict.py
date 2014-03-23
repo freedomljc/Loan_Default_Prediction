@@ -30,9 +30,11 @@ from sklearn.gaussian_process import GaussianProcess
 import features
 
 # working directory
-dir = 'loan_default_prediction'
+dir = '.'
 label_index = 770
 
+
+# load train data
 def load_train_fs():
     # In the validation process, the training data was randomly shuffled firstly. 
     # For the prediction process, there is no need to shuffle the dataset. 
@@ -45,6 +47,8 @@ def load_train_fs():
     train_fs[np.isinf(train_fs)] = 0
     return train_fs
 
+
+# load test data
 def load_test_fs():
     test_fs = np.genfromtxt(open(dir + '/test_v2.csv','rb'), delimiter=',', skip_header = 1)
     col_mean = stats.nanmean(test_fs, axis=0)
@@ -53,22 +57,24 @@ def load_test_fs():
     test_fs[np.isinf(test_fs)] = 0
     return test_fs
 
-
+# extract features from test data
 def test_type(test_fs):
     x_Test = test_fs[:,range(1, label_index)]
     return x_Test
 
+# extract features from train data
 def train_type(train_fs):
     train_x = train_fs[:,range(1, label_index)]
     train_y= train_fs[:,-1]
     return train_x, train_y
 
-
+# transform the loss to the binary form
 def toLabels(train_y):
     labels = np.zeros(len(train_y))
     labels[train_y>0] = 1
     return labels
 
+# generate the output file based to the predictions
 def output_preds(preds):
     out_file = dir + '/output.csv'
     fs = open(out_file,'w')
@@ -83,6 +89,7 @@ def output_preds(preds):
     fs.close()
     return
 
+# get the top feature indexes by invoking f_regression 
 def getTopFeatures(train_x, train_y, n_features=100):
     f_val, p_val = f_regression(train_x,train_y)
     f_val_dict = {}
@@ -104,7 +111,8 @@ def getTopFeatures(train_x, train_y, n_features=100):
     
     return feature_indexs
 
-def get_train_data(train_x, feature_indexs, feature_minus_pair_list=[], feature_plus_pair_list=[],
+# generate the new data, based on which features are generated, and used
+def get_data(train_x, feature_indexs, feature_minus_pair_list=[], feature_plus_pair_list=[],
             feature_mul_pair_list=[], feature_divide_pair_list = [], feature_pair_sub_mul_list=[],
             feature_pair_plus_mul_list = [],feature_pair_sub_divide_list = [], feature_minus2_pair_list = [],feature_mul2_pair_list=[], 
             feature_sub_square_pair_list=[], feature_square_sub_pair_list=[],feature_square_plus_pair_list=[]):
@@ -137,15 +145,25 @@ def get_train_data(train_x, feature_indexs, feature_minus_pair_list=[], feature_
         
     return sub_train_x
 
+# use gbm classifier to predict whether the loan defaults or not
+def gbc_classify(train_x, train_y):
+    feature_indexs = getTopFeatures(train_x, train_y)
+    sub_x_Train = get_data(train_x, feature_indexs[:16], features.feature_pair_sub_list
+                ,features.feature_pair_plus_list, features.feature_pair_mul_list, features.feature_pair_divide_list[:20],
+                features.feature_pair_sub_mul_list[:20])
+    labels = toLabels(train_y)
+    gbc = GradientBoostingClassifier(n_estimators=3000, max_depth=8)
+    gbc.fit(sub_x_Train, labels)
+    return gbc
 
-
+# use svm to predict the loss, based on the result of gbm classifier
 def gbc_svr_predict_part(gbc, train_x, train_y, test_x, feature_pair_sub_list, 
                      feature_pair_plus_list, feature_pair_mul_list, feature_pair_divide_list, 
                      feature_pair_sub_mul_list, feature_pair_sub_list_sf, feature_pair_plus_list2):
     feature_indexs = getTopFeatures(train_x, train_y)
-    sub_x_Train = get_train_data(train_x, feature_indexs[:16], feature_pair_sub_list
+    sub_x_Train = get_data(train_x, feature_indexs[:16], feature_pair_sub_list
                 ,feature_pair_plus_list, feature_pair_mul_list, feature_pair_divide_list[:20], feature_pair_sub_mul_list[:20])
-    sub_x_Test = get_train_data(test_x, feature_indexs[:16], feature_pair_sub_list
+    sub_x_Test = get_data(test_x, feature_indexs[:16], feature_pair_sub_list
                 ,feature_pair_plus_list, feature_pair_mul_list, feature_pair_divide_list[:20], feature_pair_sub_mul_list[:20])
     pred_labels = gbc.predict(sub_x_Test)
     
@@ -163,9 +181,9 @@ def gbc_svr_predict_part(gbc, train_x, train_y, test_x, feature_pair_sub_list,
     
     ind_tmp = np.where(~flag)[0]
     
-    sub_x_Train = get_train_data(train_x, feature_indexs[:100], feature_pair_sub_list_sf
+    sub_x_Train = get_data(train_x, feature_indexs[:100], feature_pair_sub_list_sf
         ,feature_pair_plus_list2[:100], feature_pair_mul_list[:40], feature_pair_divide_list, feature_pair_sub_mul_list)
-    sub_x_Test = get_train_data(test_x, feature_indexs[:100], feature_pair_sub_list_sf
+    sub_x_Test = get_data(test_x, feature_indexs[:100], feature_pair_sub_list_sf
         ,feature_pair_plus_list2[:100], feature_pair_mul_list[:40], feature_pair_divide_list, feature_pair_sub_mul_list)
     sub_x_Train[:,101] = np.log(1-sub_x_Train[:,101])
     sub_x_Test[ind_tmp,101] = np.log(1-sub_x_Test[ind_tmp,101])
@@ -182,13 +200,14 @@ def gbc_svr_predict_part(gbc, train_x, train_y, test_x, feature_pair_sub_list,
     preds_all[ind_tmp0] = 0
     return preds_all
 
+# use gbm regression to predict the loss, based on the result of gbm classifier
 def gbc_gbr_predict_part(gbc,  train_x, train_y, test_x, feature_pair_sub_list, 
                      feature_pair_plus_list, feature_pair_mul_list, feature_pair_divide_list, 
                      feature_pair_sub_mul_list, feature_pair_sub_list2):
     feature_indexs = getTopFeatures(train_x, train_y)
-    sub_x_Train = get_train_data(train_x, feature_indexs[:16], feature_pair_sub_list
+    sub_x_Train = get_data(train_x, feature_indexs[:16], feature_pair_sub_list
                 ,feature_pair_plus_list, feature_pair_mul_list, feature_pair_divide_list[:20],feature_pair_sub_mul_list[:20])
-    sub_x_Test = get_train_data(test_x, feature_indexs[:16], feature_pair_sub_list
+    sub_x_Test = get_data(test_x, feature_indexs[:16], feature_pair_sub_list
                 ,feature_pair_plus_list, feature_pair_mul_list, feature_pair_divide_list[:20], feature_pair_sub_mul_list[:20])
     pred_labels = gbc.predict(sub_x_Test)
     
@@ -206,9 +225,9 @@ def gbc_gbr_predict_part(gbc,  train_x, train_y, test_x, feature_pair_sub_list,
     
     ind_tmp = np.where(~flag)[0]
     
-    sub_x_Train = get_train_data(train_x, feature_indexs[:16], feature_pair_sub_list2[:70]
+    sub_x_Train = get_data(train_x, feature_indexs[:16], feature_pair_sub_list2[:70]
                         ,feature_pair_plus_list, feature_pair_mul_list, feature_pair_divide_list, feature_pair_sub_mul_list)
-    sub_x_Test = get_train_data(test_x, feature_indexs[:16], feature_pair_sub_list2[:70]
+    sub_x_Test = get_data(test_x, feature_indexs[:16], feature_pair_sub_list2[:70]
                         ,feature_pair_plus_list, feature_pair_mul_list, feature_pair_divide_list, feature_pair_sub_mul_list)
     
     scaler = pp.StandardScaler()
@@ -225,7 +244,7 @@ def gbc_gbr_predict_part(gbc,  train_x, train_y, test_x, feature_pair_sub_list,
     return preds_all
 
 
-#predict ind_test
+# predict the loss based on the Gaussian process regressor, which has been trained
 def gp_predict(clf, x_Test):
     size = len(x_Test)
     part_size = 3000
@@ -239,6 +258,7 @@ def gp_predict(clf, x_Test):
         preds.extend(pred_part)
     return np.power(np.e,preds)
 
+# train the gaussian process regressor
 def gbc_gp_predict_part(sub_x_Train, train_y, sub_x_Test_part):
     #Owing to out of memory, the model was trained by part of training data
     #Attention, this part was trained on the ram of more than 96G
@@ -260,11 +280,12 @@ def gbc_gp_predict_part(sub_x_Train, train_y, sub_x_Test_part):
     gp_preds[ind_tmp] = gp_preds_tmp
     return gp_preds
 
+# use gbm classifier to predict whether the loan defaults or not, then invoke the function gbc_gp_predict_part
 def gbc_gp_predict(train_x, train_y, test_x):
     feature_indexs = getTopFeatures(train_x, train_y)
-    sub_x_Train = get_train_data(train_x, feature_indexs[:16], features.feature_pair_sub_list
+    sub_x_Train = get_data(train_x, feature_indexs[:16], features.feature_pair_sub_list
             ,features.feature_pair_plus_list, features.feature_pair_mul_list, features.feature_pair_divide_list[:20])
-    sub_x_Test = get_train_data(test_x, feature_indexs[:16], features.feature_pair_sub_list
+    sub_x_Test = get_data(test_x, feature_indexs[:16], features.feature_pair_sub_list
             ,features.feature_pair_plus_list, features.feature_pair_mul_list, features.feature_pair_divide_list[:20])
     labels = toLabels(train_y)
     gbc = GradientBoostingClassifier(n_estimators=3000, max_depth=9)
@@ -276,16 +297,8 @@ def gbc_gp_predict(train_x, train_y, test_x):
     gp_preds[ind_test] = gp_preds_part
     return gp_preds
 
-def gbc_classify(train_x, train_y):
-    feature_indexs = getTopFeatures(train_x, train_y)
-    sub_x_Train = get_train_data(train_x, feature_indexs[:16], features.feature_pair_sub_list
-                ,features.feature_pair_plus_list, features.feature_pair_mul_list, features.feature_pair_divide_list[:20],
-                features.feature_pair_sub_mul_list[:20])
-    labels = toLabels(train_y)
-    gbc = GradientBoostingClassifier(n_estimators=3000, max_depth=8)
-    gbc.fit(sub_x_Train, labels)
-    return gbc
 
+# invoke the function gbc_svr_predict_part
 def gbc_svr_predict(gbc, train_x, train_y, test_x):
     svr_preds = gbc_svr_predict_part(gbc, train_x, train_y, test_x, features.feature_pair_sub_list, features.feature_pair_plus_list, 
                                      features.feature_pair_mul_list, features.feature_pair_divide_list,
@@ -293,6 +306,7 @@ def gbc_svr_predict(gbc, train_x, train_y, test_x):
                                      features.feature_pair_plus_list2)
     return svr_preds
 
+# invoke the function gbc_gbr_predict_part
 def gbc_gbr_predict(gbc, train_x, train_y, test_x):
     gbr_preds = gbc_gbr_predict_part(gbc,  train_x, train_y, test_x, features.feature_pair_sub_list, 
                                      features.feature_pair_plus_list, features.feature_pair_mul_list, 
@@ -300,15 +314,16 @@ def gbc_gbr_predict(gbc, train_x, train_y, test_x):
                                      features.feature_pair_sub_list2)
     return gbr_preds
 
+# the main function
 if __name__ == '__main__':
     train_fs = load_train_fs()
     test_fs = load_test_fs()
     train_x, train_y = train_type(train_fs)
     test_x = test_type(test_fs)
-    gp_preds = gbc_gp_predict(train_x, train_y, test_x)
     gbc = gbc_classify(train_x, train_y)
     svr_preds = gbc_svr_predict(gbc, train_x, train_y, test_x)
     gbr_preds = gbc_gbr_predict(gbc, train_x, train_y, test_x)
+    gp_preds = gbc_gp_predict(train_x, train_y, test_x)
     preds_all = svr_preds * 0.5 + gp_preds * 0.2 + gbr_preds * 0.3
     output_preds(preds_all)
     
